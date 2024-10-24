@@ -1,167 +1,214 @@
 section .data
-    prompt_num1 db "Ingrese el primer numero:  ", 0
-    prompt_num2 db "Ingrese el segundo numero:  ", 0
-    prompt_op   db "Ingrese la operacion (+, -, *, /):   ", 0
-    result_msg db "El resultado es:   ", 0
-    newline    db 10, 0
-    div_error  db "Error: Division por cero!", 0
+    prompt_num1 db "Ingrese el primer numero (o 'exit' para salir): ", 0
+    prompt_num2 db "Ingrese el segundo numero: ", 0
+    prompt_op db "Ingrese la operacion (+, -, *, /, %): ", 0
+    result_msg db "Resultado: ", 0
+    error_div0_msg db "Error: Division por cero.", 0
+    exit_msg db "Saliendo del programa...", 0
+    newline db 0xA, 0
+    input_buffer db 20 dup(0)
 
 section .bss
-    num1 resb 10
-    num2 resb 10
-    op resb 1
-    result resb 10
+    num1 resd 1
+    num2 resd 1
+    result resd 1
 
 section .text
     global _start
 
 _start:
-    ; Solicitar primer número
-    mov eax, 4            ; sys_write
-    mov ebx, 1            ; stdout
-    mov ecx, prompt_num1  ; mensaje
-    mov edx, 23           ; longitud
-    int 0x80              ; llamada al sistema
+    bucle_principal:
+        ; Solicitar el primer número
+        call solicitar_numero
+        cmp eax, -1          ; Verificar si el usuario ingresó "exit"
+        je salir_programa
+        mov [num1], eax      ; Almacenar el primer número
 
-    ; Leer primer número
-    mov eax, 3            ; sys_read
-    mov ebx, 0            ; stdin
-    mov ecx, num1         ; buffer para almacenar
-    mov edx, 10           ; longitud máxima de entrada
-    int 0x80              ; llamada al sistema
+        ; Solicitar el segundo número
+        call solicitar_numero
+        cmp eax, -1          ; Verificar si el usuario ingresó "exit"
+        je salir_programa
+        mov [num2], eax      ; Almacenar el segundo número
 
-    ; Convertir el primer número a entero
-    call str_to_int
-    mov ebx, eax          ; almacenar num1 en ebx
+        ; Solicitar la operación
+        call solicitar_operacion
+        cmp al, '+'          ; Verificar la operación
+        je hacer_suma
+        cmp al, '-'          
+        je hacer_resta
+        cmp al, '*'
+        je hacer_multiplicacion
+        cmp al, '/'
+        je hacer_division
+        cmp al, '%'
+        je hacer_modulo
+        jmp fin              ; Si no es un operador válido, terminar
 
-    ; Solicitar segundo número
-    mov eax, 4            ; sys_write
-    mov ebx, 1            ; stdout
-    mov ecx, prompt_num2  ; mensaje
-    mov edx, 23           ; longitud
-    int 0x80              ; llamada al sistema
-
-    ; Leer segundo número
-    mov eax, 3            ; sys_read
-    mov ebx, 0            ; stdin
-    mov ecx, num2         ; buffer para almacenar
-    mov edx, 10           ; longitud máxima de entrada
-    int 0x80              ; llamada al sistema
-
-    ; Convertir el segundo número a entero
-    call str_to_int
-    mov ecx, eax          ; almacenar num2 en ecx
-
-    ; Solicitar operación
-    mov eax, 4            ; sys_write
-    mov ebx, 1            ; stdout
-    mov ecx, prompt_op    ; mensaje
-    mov edx, 31           ; longitud
-    int 0x80              ; llamada al sistema
-
-    ; Leer operación
-    mov eax, 3            ; sys_read
-    mov ebx, 0            ; stdin
-    mov ecx, op           ; buffer para operación
-    mov edx, 1            ; longitud máxima de entrada
-    int 0x80              ; llamada al sistema
-
-    ; Realizar la operación
-    mov al, [op]          ; obtener la operación
-    cmp al, '+'           ; si es suma
-    je suma
-    cmp al, '-'           ; si es resta
-    je resta
-    cmp al, '*'           ; si es multiplicación
-    je multiplicacion
-    cmp al, '/'           ; si es división
-    je division
-
-    ; Fin del programa
-    jmp _exit
-
-suma:
-    add ebx, ecx          ; suma num1 + num2
+hacer_suma:
+    mov eax, [num1]
+    add eax, [num2]
+    mov [result], eax
     jmp mostrar_resultado
 
-resta:
-    sub ebx, ecx          ; resta num1 - num2
+hacer_resta:
+    mov eax, [num1]
+    sub eax, [num2]
+    mov [result], eax
     jmp mostrar_resultado
 
-multiplicacion:
-    imul ebx, ecx         ; multiplicación num1 * num2
+hacer_multiplicacion:
+    mov eax, [num1]
+    imul eax, [num2]
+    mov [result], eax
     jmp mostrar_resultado
 
-division:
-    cmp ecx, 0            ; verificar si num2 es 0
-    je division_error
-    idiv ecx              ; división num1 / num2
+hacer_division:
+    mov eax, [num2]
+    cmp eax, 0
+    je error_division_por_cero
+    mov eax, [num1]
+    xor edx, edx        ; Limpiar edx antes de la división
+    idiv dword [num2]
+    mov [result], eax
     jmp mostrar_resultado
 
-division_error:
-    mov eax, 4            ; sys_write
-    mov ebx, 1            ; stdout
-    mov ecx, div_error    ; mensaje de error
-    mov edx, 24           ; longitud del mensaje
-    int 0x80              ; llamada al sistema
-    jmp _exit
+hacer_modulo:
+    mov eax, [num2]
+    cmp eax, 0
+    je error_division_por_cero
+    mov eax, [num1]
+    xor edx, edx        ; Limpiar edx antes de la división
+    idiv dword [num2]
+    mov eax, edx        ; Almacenar el residuo en eax
+    mov [result], eax
+    jmp mostrar_resultado
+
+error_division_por_cero:
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, error_div0_msg
+    mov edx, 22
+    int 0x80
+    jmp fin
 
 mostrar_resultado:
-    ; Mostrar mensaje de resultado
-    mov eax, 4            ; sys_write
-    mov ebx, 1            ; stdout
-    mov ecx, result_msg   ; mensaje
-    mov edx, 16           ; longitud
-    int 0x80              ; llamada al sistema
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, result_msg
+    mov edx, 10
+    int 0x80
 
-    ; Convertir el resultado en cadena de caracteres
-    mov eax, ebx          ; resultado
-    call int_to_str
+    ; Mostrar el resultado
+    mov eax, [result]
+    call imprimir_resultado
+    jmp bucle_principal
 
-    ; Imprimir el resultado
-    mov eax, 4            ; sys_write
-    mov ebx, 1            ; stdout
-    mov ecx, result       ; resultado como string
-    mov edx, 10           ; longitud
-    int 0x80              ; llamada al sistema
-    jmp _exit
+fin:
+    jmp bucle_principal  ; Volver al inicio del bucle
 
-_exit:
-    ; Salir del programa
-    mov eax, 1            ; sys_exit
-    xor ebx, ebx          ; código de salida
-    int 0x80              ; llamada al sistema
+salir_programa:
+    ; Mensaje de salida
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, exit_msg
+    mov edx, 26
+    int 0x80
 
-str_to_int:
-    ; Convierte el valor en el buffer num a entero (guardado en eax)
-    mov eax, 0            ; inicializar eax (acumulador)
-    mov esi, num1         ; apuntar a la cadena
-conv_loop:
-    movzx ebx, byte [esi]  ; cargar byte de cadena
-    cmp bl, 10            ; verificar si es fin de línea
-    je done_conv
-    sub bl, '0'           ; convertir carácter ASCII a número
-    imul eax, eax, 10     ; multiplicar el acumulador por 10
-    add eax, ebx          ; sumar el dígito
-    inc esi               ; siguiente carácter
-    jmp conv_loop
-done_conv:
+    ; Terminar el programa
+    mov eax, 1
+    xor ebx, ebx
+    int 0x80
+
+; Solicitar un número al usuario
+solicitar_numero:
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, prompt_num1
+    mov edx, 50
+    int 0x80
+
+    mov eax, 3
+    mov ebx, 0
+    mov ecx, input_buffer
+    mov edx, 20
+    int 0x80
+
+    ; Comprobar si el usuario quiere salir
+    cmp byte [input_buffer], 'e'
+    je .exit_check
+    cmp byte [input_buffer + 1], 'x'
+    je .exit_check
+    cmp byte [input_buffer + 2], 'i'
+    je .exit_check
+    cmp byte [input_buffer + 3], 't'
+    je .exit_check
+    jmp .convert_to_number
+
+.exit_check:
+    mov eax, -1  ; Marcar que se quiere salir
     ret
 
-int_to_str:
-    ; Convierte el valor en eax a una cadena (guardada en result)
-    mov esi, result       ; apuntar a la cadena
-    mov ebx, 10           ; divisor para obtener los dígitos
-    add esi, 9            ; empezar desde el final del buffer
-    mov byte [esi], 0     ; terminar la cadena con NULL
+.convert_to_number:
+    xor eax, eax          ; Limpiar eax
+    xor ecx, ecx          ; Limpiar ecx (contar dígitos)
 
-convert_loop:
-    xor edx, edx          ; limpiar edx
-    div ebx               ; dividir eax entre 10, cociente en eax, resto en edx
-    add dl, '0'           ; convertir dígito a ASCII
-    dec esi               ; retroceder un espacio en la cadena
-    mov [esi], dl         ; almacenar el carácter
-    test eax, eax         ; verificar si queda algo
-    jnz convert_loop      ; si es distinto de cero, seguir
+    .convert_loop:
+        cmp byte [input_buffer + ecx], 10  ; Comprobar el carácter de nueva línea
+        je .done_conversion
+        sub byte [input_buffer + ecx], '0'  ; Convertir de ASCII a número
+        movzx ebx, byte [input_buffer + ecx]  ; Cargar el dígito en ebx
+        add eax, ebx         ; Sumar el dígito actual
+        inc ecx              ; Ir al siguiente carácter
+        jmp .convert_loop
+    .done_conversion:
     ret
-    hbcdcj
+
+; Solicitar la operación al usuario
+solicitar_operacion:
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, prompt_op
+    mov edx, 40
+    int 0x80
+
+    mov eax, 3
+    mov ebx, 0
+    mov ecx, input_buffer
+    mov edx, 2
+    int 0x80
+
+    movzx eax, byte [input_buffer]  ; Obtener la operación
+    ret
+
+; Imprimir resultado (asume que el resultado está en eax)
+imprimir_resultado:
+    ; Convertir el número a ASCII para mostrarlo
+    push eax
+    mov ecx, input_buffer           ; Buffer para el resultado
+    mov ebx, 10                     ; Divisor
+    xor edx, edx                    ; Limpiar edx (para la división)
+    .itoa_loop:
+        xor edx, edx                ; Limpiar edx
+        div ebx                     ; Dividir eax entre 10
+        add dl, '0'                ; Convertir el residuo a carácter ASCII
+        dec ecx                     ; Mover hacia atrás en el buffer
+        mov [ecx], dl              ; Almacenar el carácter en el buffer
+        test eax, eax               ; Comprobar si el cociente es 0
+        jnz .itoa_loop              ; Repetir si no es 0
+
+    ; Mostrar el número convertido
+    mov eax, 4
+    mov ebx, 1
+    mov edx, 20                    ; Longitud máxima
+    sub edx, ecx                   ; Ajustar longitud
+    int 0x80
+
+    ; Mostrar nueva línea
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, newline
+    mov edx, 1
+    int 0x80
+
+    pop eax
+    ret
