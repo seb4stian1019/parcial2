@@ -164,51 +164,14 @@ main_loop:
 
 sumar:
     ; Lógica de suma
-    ; Convertir los números de ASCII a valores numéricos con signo
     mov al, [num1]
     mov bl, [num2]
-    
-    ; Comprobar si num1 es negativo
-    cmp al, '-'
-    jne num1_positivo
-    mov al, [num1+1]   ; Ignoramos el signo '-' para la operación
-    sub al, '0'        ; Convertimos de ASCII a decimal
-    neg al             ; Hacemos que num1 sea negativo
-    jmp num2_check
-
-num1_positivo:
-    sub al, '0'        ; Convertimos de ASCII a decimal
-
-num2_check:
-    ; Comprobar si num2 es negativo
-    cmp bl, '-'
-    jne num2_positivo
-    mov bl, [num2+1]   ; Ignoramos el signo '-' para la operación
-    sub bl, '0'        ; Convertimos de ASCII a decimal
-    neg bl             ; Hacemos que num2 sea negativo
-    jmp realizar_suma
-
-num2_positivo:
-    sub bl, '0'        ; Convertimos de ASCII a decimal
-
-realizar_suma:
-    ; Sumar los números
+    sub al, '0'     ; Convertir de ASCII a decimal
+    sub bl, '0'     ; Convertir de ASCII a decimal
     add al, bl
-    ; Verificar si el resultado es negativo
-    js resultado_negativo
-
-resultado_positivo:
-    ; Convertir el resultado a ASCII (cuando el resultado es positivo)
-    mov ah, 0
-    mov bx, 10         ; Dividir por 10 para manejar múltiples dígitos
-    div bl             ; AX / BX -> AL = cociente, AH = resto
-    add al, '0'        ; Convertimos el cociente a ASCII
+    add al, '0'     ; Convertir de decimal a ASCII
     mov [resultado], al
-
-    ; Almacenar el resto (si existe, cuando es mayor a 9)
-    add ah, '0'
-    mov [resultado + 1], ah
-    mov byte [resultado + 2], 0  ; Añadimos un terminador de cadena
+    mov byte [resultado+1], 0  ; Añadimos un terminador de cadena
 
     ; Mostrar el resultado
     mov eax, 4
@@ -220,119 +183,28 @@ resultado_positivo:
     mov eax, 4
     mov ebx, 1
     mov ecx, resultado
-    mov edx, 3    ; Mostrar 2 caracteres
+    mov edx, 2    ; Mostrar 1 carácter
     int 80h
 
     jmp main_loop
-
-resultado_negativo:
-    ; Si el resultado es negativo, invertimos el valor y agregamos el signo '-'
-    neg al
-    mov ah, 0
-    mov bx, 10
-    div bl
-    add al, '0'
-    mov [resultado+1], al       ; Almacena la parte decimal en la segunda posición
-
-    add ah, '0'
-    mov [resultado+2], ah       ; Almacena el segundo dígito
-    mov byte [resultado], '-'   ; Almacena el signo negativo
-    mov byte [resultado+3], 0   ; Terminador de cadena
-
-    ; Mostrar el resultado
-    mov eax, 4
-    mov ebx, 1
-    mov ecx, msg9
-    mov edx, lmsg9
-    int 80h
-
-    mov eax, 4
-    mov ebx, 1
-    mov ecx, resultado
-    mov edx, 4    ; Mostrar 3 caracteres
-    int 80h
-
-    jmp main_loop
-
 
 restar:
     ; Lógica de resta
-    ; Convertir los números de ASCII a valores numéricos con signo
     mov al, [num1]
     mov bl, [num2]
-
-    ; Comprobar si num1 es negativo
-    cmp al, '-'
-    jne num1_resta_positivo
-    mov al, [num1+1]   ; Ignorar el signo '-' para la operación
-    sub al, '0'        ; Convertir de ASCII a decimal
-    neg al             ; Hacemos que num1 sea negativo
-    jmp num2_resta_check
-
-num1_resta_positivo:
-    sub al, '0'        ; Convertir de ASCII a decimal
-
-num2_resta_check:
-    ; Comprobar si num2 es negativo
-    cmp bl, '-'
-    jne num2_resta_positivo
-    mov bl, [num2+1]   ; Ignorar el signo '-' para la operación
-    sub bl, '0'        ; Convertir de ASCII a decimal
-    neg bl             ; Hacemos que num2 sea negativo
-    jmp realizar_resta
-
-num2_resta_positivo:
-    sub bl, '0'        ; Convertir de ASCII a decimal
-
-realizar_resta:
-    ; Restar los números
+    sub al, '0'     ; Convertir de ASCII a decimal
+    sub bl, '0'     ; Convertir de ASCII a decimal
     sub al, bl
-    ; Verificar si el resultado es negativo
-    js resultado_resta_negativo
 
-resultado_resta_positivo:
-    ; Convertir el resultado a ASCII cuando es positivo
-    mov ah, 0
-    mov bx, 10          ; Dividir por 10 para manejar múltiplos dígitos
-    div bl              ; AX / BX -> AL = cociente, AH = resto
-    add al, '0'         ; Convertir el cociente a ASCII
-    mov [resultado], al
+    ; Verificamos si el resultado es negativo
+    js negativo     ; Si el resultado es negativo, saltamos a la etiqueta "negativo"
 
-    ; Guardar el resto (si existe, cuando es mayor que 9)
-    add ah, '0'
-    mov [resultado + 1], ah
-    mov byte [resultado + 2], 0  ; Terminador de cadena
-
-    ; Mostrar el resultado
-    mov eax, 4
-    mov ebx, 1
-    mov ecx, msg9
-    mov edx, lmsg9
-    int 80h
-
-    mov eax, 4
-    mov ebx, 1
-    mov ecx, resultado
-    mov edx, 3    ; Mostrar 2 caracteres
-    int 80h
-
-    jmp main_loop
-
-resultado_resta_negativo:
-    ; Si el resultado es negativo, invertir el valor y agregar el signo '-'
-    neg al
-    mov ah, 0
-    mov bx, 10
-    div bl
+    ; Si no es negativo, convertimos el resultado a ASCII
     add al, '0'
-    mov [resultado+1], al       ; Almacena la parte decimal en la segunda posición
+    mov [resultado], al
+    mov byte [resultado+1], 0  ; Añadimos un terminador de cadena
 
-    add ah, '0'
-    mov [resultado+2], ah       ; Almacena el segundo dígito
-    mov byte [resultado], '-'   ; Almacena el signo negativo
-    mov byte [resultado+3], 0   ; Terminador de cadena
-
-    ; Mostrar el resultado
+    ; Mostramos el resultado
     mov eax, 4
     mov ebx, 1
     mov ecx, msg9
@@ -342,11 +214,10 @@ resultado_resta_negativo:
     mov eax, 4
     mov ebx, 1
     mov ecx, resultado
-    mov edx, 4    ; Mostrar 3 caracteres
+    mov edx, 2    ; Mostrar 1 carácter
     int 80h
 
     jmp main_loop
-
 
 negativo:
     ; Si el resultado es negativo, invertimos el valor
@@ -373,60 +244,28 @@ negativo:
     jmp main_loop
 
 multiplicar:
-    ; Convertir num1 y num2 de ASCII a valores numéricos
+    ; Lógica de multiplicación
     mov al, [num1]
     mov bl, [num2]
-    mov cl, 0              ; Inicializamos cl para el signo (0 = positivo, 1 = negativo)
+    sub al, '0'      ; Convertir de ASCII a decimal
+    sub bl, '0'      ; Convertir de ASCII a decimal
+    mul bl           ; AL * BL -> Resultado en AX (16 bits)
 
-    ; Verificar si num1 es negativo
-    cmp al, '-'
-    jne num1_es_positivo
-    mov al, [num1 + 1]     ; Saltar el signo '-'
-    inc cl                 ; Indicar que el resultado es negativo
-num1_es_positivo:
-    sub al, '0'            ; Convertir de ASCII a decimal
+    ; Convertir el resultado a ASCII
+    ; Si el resultado es mayor a 9, mostramos ambos dígitos
+    mov bx, 10       ; Dividir por 10
+    xor dx, dx       ; Limpiamos DX para la división
 
-    ; Verificar si num2 es negativo
-    cmp bl, '-'
-    jne num2_es_positivo
-    mov bl, [num2 + 1]     ; Saltar el signo '-'
-    inc cl                 ; Cambiar el signo del resultado
-num2_es_positivo:
-    sub bl, '0'            ; Convertir de ASCII a decimal
+    div bl           ; AX / BX -> AL = cociente, AH = resto
+    add al, '0'      ; Convertimos el cociente a ASCII
+    mov [resultado], al
 
-    ; Multiplicar los valores absolutos (AL * BL)
-    imul bl                ; Resultado en AX (16 bits) para manejar la multiplicación
+    ; Guardamos el resto (uno de los dígitos)
+    add ah, '0'      ; Convertimos el resto a ASCII
+    mov [resultado + 1], ah
+    mov byte [resultado + 2], 0  ; Añadimos un terminador de cadena
 
-    ; Determinar el signo final
-    test cl, 1
-    jz resultado_multiplicacion_positivo
-
-    ; Si el resultado es negativo
-    neg ax
-    mov byte [resultado], '-'    ; Colocar el signo negativo
-    jmp convertir_a_ascii
-
-resultado_multiplicacion_positivo:
-    mov byte [resultado], ' '    ; Colocar un espacio si es positivo
-
-convertir_a_ascii:
-    ; Convertir el valor en AX a ASCII, soportando múltiplos dígitos
-    mov bx, 10                   ; Divisor para obtener unidades y decenas
-    xor dx, dx                   ; Limpiar DX para la división
-
-    ; Dividir para obtener el primer dígito
-    div bx                       ; AX / 10 -> AL = cociente, AH = resto
-    add ah, '0'                  ; Convertir el resto a ASCII
-    mov [resultado+2], ah        ; Guardar el primer dígito en resultado
-
-    ; Dividir de nuevo para obtener el segundo dígito (decenas)
-    mov al, ah                   ; Mover el cociente al lugar adecuado
-    add al, '0'                  ; Convertir a ASCII
-    mov [resultado+1], al        ; Guardar en resultado
-
-    mov byte [resultado+3], 0    ; Agregar terminador de cadena
-
-    ; Mostrar el resultado
+    ; Mostramos el resultado
     mov eax, 4
     mov ebx, 1
     mov ecx, msg9
@@ -436,11 +275,10 @@ convertir_a_ascii:
     mov eax, 4
     mov ebx, 1
     mov ecx, resultado
-    mov edx, 4                  ; Mostrar 3 caracteres (signo y 2 dígitos)
+    mov edx, 3  ; Mostrar 2 caracteres
     int 80h
 
     jmp main_loop
-
 
 dividir:
     ; Lógica de división
