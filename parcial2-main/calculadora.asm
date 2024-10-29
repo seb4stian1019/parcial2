@@ -164,14 +164,51 @@ main_loop:
 
 sumar:
     ; Lógica de suma
+    ; Convertir los números de ASCII a valores numéricos con signo
     mov al, [num1]
     mov bl, [num2]
-    sub al, '0'     ; Convertir de ASCII a decimal
-    sub bl, '0'     ; Convertir de ASCII a decimal
+    
+    ; Comprobar si num1 es negativo
+    cmp al, '-'
+    jne num1_positivo
+    mov al, [num1+1]   ; Ignoramos el signo '-' para la operación
+    sub al, '0'        ; Convertimos de ASCII a decimal
+    neg al             ; Hacemos que num1 sea negativo
+    jmp num2_check
+
+num1_positivo:
+    sub al, '0'        ; Convertimos de ASCII a decimal
+
+num2_check:
+    ; Comprobar si num2 es negativo
+    cmp bl, '-'
+    jne num2_positivo
+    mov bl, [num2+1]   ; Ignoramos el signo '-' para la operación
+    sub bl, '0'        ; Convertimos de ASCII a decimal
+    neg bl             ; Hacemos que num2 sea negativo
+    jmp realizar_suma
+
+num2_positivo:
+    sub bl, '0'        ; Convertimos de ASCII a decimal
+
+realizar_suma:
+    ; Sumar los números
     add al, bl
-    add al, '0'     ; Convertir de decimal a ASCII
+    ; Verificar si el resultado es negativo
+    js resultado_negativo
+
+resultado_positivo:
+    ; Convertir el resultado a ASCII (cuando el resultado es positivo)
+    mov ah, 0
+    mov bx, 10         ; Dividir por 10 para manejar múltiples dígitos
+    div bl             ; AX / BX -> AL = cociente, AH = resto
+    add al, '0'        ; Convertimos el cociente a ASCII
     mov [resultado], al
-    mov byte [resultado+1], 0  ; Añadimos un terminador de cadena
+
+    ; Almacenar el resto (si existe, cuando es mayor a 9)
+    add ah, '0'
+    mov [resultado + 1], ah
+    mov byte [resultado + 2], 0  ; Añadimos un terminador de cadena
 
     ; Mostrar el resultado
     mov eax, 4
@@ -183,7 +220,36 @@ sumar:
     mov eax, 4
     mov ebx, 1
     mov ecx, resultado
-    mov edx, 2    ; Mostrar 1 carácter
+    mov edx, 3    ; Mostrar 2 caracteres
+    int 80h
+
+    jmp main_loop
+
+resultado_negativo:
+    ; Si el resultado es negativo, invertimos el valor y agregamos el signo '-'
+    neg al
+    mov ah, 0
+    mov bx, 10
+    div bl
+    add al, '0'
+    mov [resultado+1], al       ; Almacena la parte decimal en la segunda posición
+
+    add ah, '0'
+    mov [resultado+2], ah       ; Almacena el segundo dígito
+    mov byte [resultado], '-'   ; Almacena el signo negativo
+    mov byte [resultado+3], 0   ; Terminador de cadena
+
+    ; Mostrar el resultado
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg9
+    mov edx, lmsg9
+    int 80h
+
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, resultado
+    mov edx, 4    ; Mostrar 3 caracteres
     int 80h
 
     jmp main_loop
