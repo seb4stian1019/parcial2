@@ -256,21 +256,53 @@ resultado_negativo:
 
 restar:
     ; Lógica de resta
+    ; Convertir los números de ASCII a valores numéricos con signo
     mov al, [num1]
     mov bl, [num2]
-    sub al, '0'     ; Convertir de ASCII a decimal
-    sub bl, '0'     ; Convertir de ASCII a decimal
+
+    ; Comprobar si num1 es negativo
+    cmp al, '-'
+    jne num1_resta_positivo
+    mov al, [num1+1]   ; Ignorar el signo '-' para la operación
+    sub al, '0'        ; Convertir de ASCII a decimal
+    neg al             ; Hacemos que num1 sea negativo
+    jmp num2_resta_check
+
+num1_resta_positivo:
+    sub al, '0'        ; Convertir de ASCII a decimal
+
+num2_resta_check:
+    ; Comprobar si num2 es negativo
+    cmp bl, '-'
+    jne num2_resta_positivo
+    mov bl, [num2+1]   ; Ignorar el signo '-' para la operación
+    sub bl, '0'        ; Convertir de ASCII a decimal
+    neg bl             ; Hacemos que num2 sea negativo
+    jmp realizar_resta
+
+num2_resta_positivo:
+    sub bl, '0'        ; Convertir de ASCII a decimal
+
+realizar_resta:
+    ; Restar los números
     sub al, bl
+    ; Verificar si el resultado es negativo
+    js resultado_resta_negativo
 
-    ; Verificamos si el resultado es negativo
-    js negativo     ; Si el resultado es negativo, saltamos a la etiqueta "negativo"
-
-    ; Si no es negativo, convertimos el resultado a ASCII
-    add al, '0'
+resultado_resta_positivo:
+    ; Convertir el resultado a ASCII cuando es positivo
+    mov ah, 0
+    mov bx, 10          ; Dividir por 10 para manejar múltiplos dígitos
+    div bl              ; AX / BX -> AL = cociente, AH = resto
+    add al, '0'         ; Convertir el cociente a ASCII
     mov [resultado], al
-    mov byte [resultado+1], 0  ; Añadimos un terminador de cadena
 
-    ; Mostramos el resultado
+    ; Guardar el resto (si existe, cuando es mayor que 9)
+    add ah, '0'
+    mov [resultado + 1], ah
+    mov byte [resultado + 2], 0  ; Terminador de cadena
+
+    ; Mostrar el resultado
     mov eax, 4
     mov ebx, 1
     mov ecx, msg9
@@ -280,21 +312,26 @@ restar:
     mov eax, 4
     mov ebx, 1
     mov ecx, resultado
-    mov edx, 2    ; Mostrar 1 carácter
+    mov edx, 3    ; Mostrar 2 caracteres
     int 80h
 
     jmp main_loop
 
-negativo:
-    ; Si el resultado es negativo, invertimos el valor
+resultado_resta_negativo:
+    ; Si el resultado es negativo, invertir el valor y agregar el signo '-'
     neg al
+    mov ah, 0
+    mov bx, 10
+    div bl
     add al, '0'
-    ; Almacenamos el signo menos '-' en la primera posición de resultado
-    mov byte [resultado], '-'
-    mov byte [resultado+1], al
-    mov byte [resultado+2], 0  ; Añadimos un terminador de cadena
+    mov [resultado+1], al       ; Almacena la parte decimal en la segunda posición
 
-    ; Mostramos el resultado
+    add ah, '0'
+    mov [resultado+2], ah       ; Almacena el segundo dígito
+    mov byte [resultado], '-'   ; Almacena el signo negativo
+    mov byte [resultado+3], 0   ; Terminador de cadena
+
+    ; Mostrar el resultado
     mov eax, 4
     mov ebx, 1
     mov ecx, msg9
@@ -304,7 +341,7 @@ negativo:
     mov eax, 4
     mov ebx, 1
     mov ecx, resultado
-    mov edx, 3  ; Mostrar signo y número
+    mov edx, 4    ; Mostrar 3 caracteres
     int 80h
 
     jmp main_loop
